@@ -1,6 +1,5 @@
 package main
 
-
 // Input is a list of reports, which look like ints
 // These reports are safe if:
 //	- The levels are either all increasing or all decreasing, AND
@@ -8,26 +7,47 @@ package main
 // Otherwise they are unsafe
 // Goal is to see how many reports are safe
 
+// Part 2: The problem dampener can tolerate 1 bad level (i.e. one level can be "skipped")
+// So, we need to check if:
+//	1. We have already skipped a level, and
+//	2. The next level follows the same rules
+
 import (
-		"bufio"
-		"fmt"
-		"os"
-		"strings"
-		"strconv"
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
 )
 
 func main() {
 	reports := createInputMatrix()
-	
+	// reports := [][]int {
+	// 	{7, 6, 4, 2, 1},
+	// 	{1, 2, 7, 8, 9},
+	// 	{9, 7, 6, 2, 1},
+	// 	{1, 3, 2, 4, 5},
+	// 	{8, 6, 4, 4, 1},
+	// 	{1, 3, 6, 7, 9},
+	// 	{0, 3, 2, 1},
+	// 	{0, 3, 2, 5, 7},
+	// 	{0, 4, 2, 3, 5},
+	// }
+
 	numReportsSafe := 0
+	failed := make([][]int, 0)
 
 	for _, report := range reports {
 		if isReportSafe(report) {
 			numReportsSafe++
+		} else {
+			failed = append(failed, report)
 		}
 	}
-	
+
+	fmt.Println("Number of total reports:", len(reports))
 	fmt.Println("Number of safe reports: ", numReportsSafe)
+	fmt.Println("Faled reports:", failed)
 }
 
 func createInputMatrix() [][]int {
@@ -64,39 +84,85 @@ func createInputMatrix() [][]int {
 * Reports are safe if:
 *	1. Levels are all increasing or all decreasing, AND
 *	2. The difference between levels is 1 <= levels <= 3
-*/
+ */
 func isReportSafe(report []int) bool {
 	reportSafe := true
+	levelSkipped := false
 
 	// Report of length 1 should be safe (?)
 	if len(report) >= 2 {
-		increasing := report[0] < report[1]
+		first := report[0]
+		second := report[1]
 
-		for i,r := range report {
+		increasing := first < second
+
+		// If we hit a problem, we need to determine if the report can continue,
+		// by removing the current OR previous level
+		for i := range report {
 			if i == 0 {
 				continue
 			}
+			currIdx := i
+			prevIdx := i - 1
 
-			// Check for condition 1
-			if (report[i - 1] > r && increasing) || (report[i - 1] < r && !increasing) {
-				reportSafe = false
-				// break  // Uncomment for part 1
-			}
+			reportSafe = isSafe(increasing, report[prevIdx], report[currIdx])
 
-			// Check for condition 2
-			var diff int
-			if report[i - 1] < r {
-				diff = r - report[i - 1]
-			} else {
-				diff = report[i - 1] - r
-			}
+			if !reportSafe && !levelSkipped {
+				if prevIdx >= 0 {
+					var removePrevLevel bool
+					if currIdx == 2 {
+						// If we are at idx 2 and are considering removing idx 1, we may have to change direction
+						var oneRemoveSafe bool
+						var zeroRemoveSafe bool
+						direction := report[2] < report[3] // Look ahead to see direction we should prioritize
 
-			if diff < 1 || diff > 3 {
-				reportSafe = false
-				// break // Uncomment for part 1
+						oneRemoveSafe = isSafe(direction, report[0], report[2])
+						if !oneRemoveSafe {
+							zeroRemoveSafe = isSafe(direction, report[1], report[2])
+						}
+
+						removePrevLevel = oneRemoveSafe || zeroRemoveSafe
+						if removePrevLevel {
+							increasing = direction
+						}
+					} else if currIdx > 2 {
+						// Check if prev removed is valid
+						removePrevLevel = isSafe(increasing, report[prevIdx-1], report[currIdx])
+					}
+
+					if !removePrevLevel {
+						report[currIdx] = report[prevIdx] // If the previous level cannot be removed, we are forced to remove ourself
+					}
+				}
+
+				levelSkipped = true
+				reportSafe = true
+			} else if !reportSafe {
+				// If report is not safe and we have already performed a skip,
+				// break out of the loop
+				break
 			}
 		}
-	} 
+	}
 
 	return reportSafe
+}
+
+/*
+* Reports are safe if:
+*	1. Levels are all increasing or all decreasing, AND
+*	2. The difference between levels is 1 <= levels <= 3
+ */
+func isSafe(setDirection bool, l1 int, l2 int) bool {
+	var diff int
+
+	if l1 < l2 {
+		diff = l2 - l1
+	} else {
+		diff = l1 - l2
+	}
+
+	increasing := l1 < l2
+
+	return increasing == setDirection && diff >= 1 && diff <= 3
 }
