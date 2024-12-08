@@ -20,6 +20,14 @@ import (
 	"strings"
 )
 
+type Direction int
+
+const (
+	None Direction = iota
+	Asc
+	Desc
+)
+
 func main() {
 	reports := createInputMatrix()
 	// reports := [][]int {
@@ -38,7 +46,7 @@ func main() {
 	failed := make([][]int, 0)
 
 	for _, report := range reports {
-		if isReportSafe(report) {
+		if isReportSafe(report, true, None) {
 			numReportsSafe++
 		} else {
 			failed = append(failed, report)
@@ -47,7 +55,6 @@ func main() {
 
 	fmt.Println("Number of total reports:", len(reports))
 	fmt.Println("Number of safe reports: ", numReportsSafe)
-	fmt.Println("Faled reports:", failed)
 }
 
 func createInputMatrix() [][]int {
@@ -85,16 +92,19 @@ func createInputMatrix() [][]int {
 *	1. Levels are all increasing or all decreasing, AND
 *	2. The difference between levels is 1 <= levels <= 3
  */
-func isReportSafe(report []int) bool {
+func isReportSafe(report []int, canSkip bool, direction Direction) bool {
 	reportSafe := true
-	levelSkipped := false
 
 	// Report of length 1 should be safe (?)
 	if len(report) >= 2 {
 		first := report[0]
 		second := report[1]
 
-		increasing := first < second
+		if direction == None && first < second {
+			direction = Asc
+		} else if direction == None {
+			direction = Desc
+		}
 
 		// If we hit a problem, we need to determine if the report can continue,
 		// by removing the current OR previous level
@@ -105,41 +115,23 @@ func isReportSafe(report []int) bool {
 			currIdx := i
 			prevIdx := i - 1
 
-			reportSafe = isSafe(increasing, report[prevIdx], report[currIdx])
+			levelSafe := isSafe(direction, report[prevIdx], report[currIdx])
 
-			if !reportSafe && !levelSkipped {
-				if prevIdx >= 0 {
-					var removePrevLevel bool
-					if currIdx == 2 {
-						// If we are at idx 2 and are considering removing idx 1, we may have to change direction
-						var oneRemoveSafe bool
-						var zeroRemoveSafe bool
-						direction := report[2] < report[3] // Look ahead to see direction we should prioritize
+			if !levelSafe && canSkip {
+				// If level is not safe, we can either skip the current or previous level
+				// For the 3rd level, it is also possible to skip the first level
+				skipPrevLevelSafe := prevIdx > 1 && isReportSafe(append([]int{report[prevIdx-2]}, report[currIdx:]...), false, direction)
+				skipCurrLevelSafe := currIdx < len(report)-1 && isReportSafe(append([]int{report[prevIdx]}, report[currIdx+1:]...), false, direction)
 
-						oneRemoveSafe = isSafe(direction, report[0], report[2])
-						if !oneRemoveSafe {
-							zeroRemoveSafe = isSafe(direction, report[1], report[2])
-						}
+				reportSafe = currIdx == len(report)-1 || skipPrevLevelSafe || skipCurrLevelSafe // If we are at the last level, we can just skip it and be done
 
-						removePrevLevel = oneRemoveSafe || zeroRemoveSafe
-						if removePrevLevel {
-							increasing = direction
-						}
-					} else if currIdx > 2 {
-						// Check if prev removed is valid
-						removePrevLevel = isSafe(increasing, report[prevIdx-1], report[currIdx])
-					}
-
-					if !removePrevLevel {
-						report[currIdx] = report[prevIdx] // If the previous level cannot be removed, we are forced to remove ourself
-					}
+				if currIdx == 2 && !reportSafe {
+					reportSafe = isReportSafe(report[1:], false, None)
 				}
 
-				levelSkipped = true
-				reportSafe = true
-			} else if !reportSafe {
-				// If report is not safe and we have already performed a skip,
-				// break out of the loop
+				break
+			} else if !levelSafe {
+				reportSafe = false
 				break
 			}
 		}
@@ -153,16 +145,51 @@ func isReportSafe(report []int) bool {
 *	1. Levels are all increasing or all decreasing, AND
 *	2. The difference between levels is 1 <= levels <= 3
  */
-func isSafe(setDirection bool, l1 int, l2 int) bool {
+func isSafe(setDirection Direction, l1 int, l2 int) bool {
 	var diff int
+	var direction Direction
 
 	if l1 < l2 {
 		diff = l2 - l1
+		direction = Asc
 	} else {
 		diff = l1 - l2
+		direction = Desc
 	}
 
-	increasing := l1 < l2
-
-	return increasing == setDirection && diff >= 1 && diff <= 3
+	return direction == setDirection && diff >= 1 && diff <= 3
 }
+
+// if !levelSafe && !levelSkipped { if prevIdx >= 0 { var removePrevLevel bool
+// 		if currIdx == 2 {
+// 			// If we are at idx 2 and are considering removing idx 1, we may have to change direction
+// 			var oneRemoveSafe bool
+// 			var zeroRemoveSafe bool
+// 			direction := report[2] < report[3] // Look ahead to see direction we should prioritize
+//
+// 			oneRemoveSafe = isSafe(direction, report[0], report[2])
+// 			if !oneRemoveSafe {
+// 				zeroRemoveSafe = isSafe(direction, report[1], report[2])
+// 			}
+//
+// 			removePrevLevel = oneRemoveSafe || zeroRemoveSafe
+// 			if removePrevLevel {
+// 				increasing = direction
+// 			}
+// 		} else if currIdx > 2 {
+// 			// Check if prev removed is valid
+// 			removePrevLevel = isSafe(increasing, report[prevIdx-1], report[currIdx])
+// 		}
+//
+// 		if !removePrevLevel {
+// 			report[currIdx] = report[prevIdx] // If the previous level cannot be removed, we are forced to remove ourself
+// 		}
+// 	}
+//
+// 	levelSkipped = true
+// } else if !levelSafe {
+// 	// If report is not safe and we have already performed a skip,
+// 	// break out of the loop
+// 	reportSafe = false
+// 	break
+// }
