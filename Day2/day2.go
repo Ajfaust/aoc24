@@ -30,7 +30,7 @@ const (
 
 func main() {
 	reports := createInputMatrix()
-	// reports := [][]int {
+	// reports := [][]int{
 	// 	{7, 6, 4, 2, 1},
 	// 	{1, 2, 7, 8, 9},
 	// 	{9, 7, 6, 2, 1},
@@ -40,16 +40,14 @@ func main() {
 	// 	{0, 3, 2, 1},
 	// 	{0, 3, 2, 5, 7},
 	// 	{0, 4, 2, 3, 5},
+	// 	{1, 2, 3, 4, 2},
 	// }
 
 	numReportsSafe := 0
-	failed := make([][]int, 0)
 
 	for _, report := range reports {
 		if isReportSafe(report, true, None) {
 			numReportsSafe++
-		} else {
-			failed = append(failed, report)
 		}
 	}
 
@@ -106,34 +104,35 @@ func isReportSafe(report []int, canSkip bool, direction Direction) bool {
 			direction = Desc
 		}
 
-		// If we hit a problem, we need to determine if the report can continue,
-		// by removing the current OR previous level
-		for i := range report {
-			if i == 0 {
-				continue
-			}
-			currIdx := i
-			prevIdx := i - 1
+		var i int
+		// Iterate until we find a rule break
+		for i = 0; i < len(report)-1 && reportSafe; i++ {
+			reportSafe = isSafe(direction, report[i], report[i+1])
+		}
 
-			levelSafe := isSafe(direction, report[prevIdx], report[currIdx])
-
-			if !levelSafe && canSkip {
-				// If level is not safe, we can either skip the current or previous level
-				// For the 3rd level, it is also possible to skip the first level
-				skipPrevLevelSafe := prevIdx > 1 && isReportSafe(append([]int{report[prevIdx-2]}, report[currIdx:]...), false, direction)
-				skipCurrLevelSafe := currIdx < len(report)-1 && isReportSafe(append([]int{report[prevIdx]}, report[currIdx+1:]...), false, direction)
-
-				reportSafe = currIdx == len(report)-1 || skipPrevLevelSafe || skipCurrLevelSafe // If we are at the last level, we can just skip it and be done
-
-				if currIdx == 2 && !reportSafe {
-					reportSafe = isReportSafe(report[1:], false, None)
+		if i == len(report)-1 && canSkip {
+			reportSafe = true
+		} else if !reportSafe && canSkip && i < len(report)-1 { // If we are allowed to skip, brute force by skipping every level
+			reportCopy := make([]int, len(report))
+			copy(reportCopy, report)
+			// fmt.Println("Report:", report, "New Report:", reportCopy[1:])
+			reportSafe = isReportSafe(reportCopy[1:], false, None)
+			for j := 1; j < len(report)-1 && !reportSafe; j++ {
+				if j == 1 {
+					direction = None
 				}
-
-				break
-			} else if !levelSafe {
-				reportSafe = false
-				break
+				copy(reportCopy, report)
+				newReport := append(reportCopy[:j], reportCopy[j+1:]...)
+				// fmt.Println("Report:", report, "New Report:", newReport)
+				reportSafe = isReportSafe(newReport, false, direction)
 			}
+
+			if !reportSafe {
+				copy(reportCopy, report)
+				reportSafe = isReportSafe(reportCopy[:len(report)-1], false, direction)
+			}
+
+			// fmt.Println("Result:", reportSafe)
 		}
 	}
 
@@ -157,39 +156,7 @@ func isSafe(setDirection Direction, l1 int, l2 int) bool {
 		direction = Desc
 	}
 
+	// fmt.Println("l1:", l1, "l2:", l2, "setDirection:", setDirection, "direction:", direction)
+
 	return direction == setDirection && diff >= 1 && diff <= 3
 }
-
-// if !levelSafe && !levelSkipped { if prevIdx >= 0 { var removePrevLevel bool
-// 		if currIdx == 2 {
-// 			// If we are at idx 2 and are considering removing idx 1, we may have to change direction
-// 			var oneRemoveSafe bool
-// 			var zeroRemoveSafe bool
-// 			direction := report[2] < report[3] // Look ahead to see direction we should prioritize
-//
-// 			oneRemoveSafe = isSafe(direction, report[0], report[2])
-// 			if !oneRemoveSafe {
-// 				zeroRemoveSafe = isSafe(direction, report[1], report[2])
-// 			}
-//
-// 			removePrevLevel = oneRemoveSafe || zeroRemoveSafe
-// 			if removePrevLevel {
-// 				increasing = direction
-// 			}
-// 		} else if currIdx > 2 {
-// 			// Check if prev removed is valid
-// 			removePrevLevel = isSafe(increasing, report[prevIdx-1], report[currIdx])
-// 		}
-//
-// 		if !removePrevLevel {
-// 			report[currIdx] = report[prevIdx] // If the previous level cannot be removed, we are forced to remove ourself
-// 		}
-// 	}
-//
-// 	levelSkipped = true
-// } else if !levelSafe {
-// 	// If report is not safe and we have already performed a skip,
-// 	// break out of the loop
-// 	reportSafe = false
-// 	break
-// }
