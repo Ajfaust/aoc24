@@ -9,6 +9,11 @@ package main
 // Afterwards, we can scan until a ")" and read in the input
 // Then, we can check that the arguments follow the rules by splitting on ','
 
+// Part 2 adds in do() and dont() instructions, that enables and disables mul() functions, respectively
+// Mul() functions are enabled at beginning
+
+// We could add 'do()' and 'don't()' to the regex matching, and check for them as we iterate through'
+
 import (
 	"fmt"
 	"io/ioutil"
@@ -18,24 +23,35 @@ import (
 )
 
 func main() {
-	// memory := "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))"
+	// memory := "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))"
 	memory := readInputFile()
 
 	functions := getMulFunctions(memory)
-	fmt.Println(functions)
+	// fmt.Println(functions)
 	fmt.Println(len(functions))
 	sum := 0
+	mulEnabled := true
 	for _, f := range functions {
-		nums := strings.Split(f[4:len(f)-1], ",")
-		// fmt.Println(nums)
-		a, errA := strconv.Atoi(nums[0])
-		b, errB := strconv.Atoi(nums[1])
-
-		if errA != nil || errB != nil {
-			fmt.Println("Error converting string to numbers")
+		if f == "do()" {
+			mulEnabled = true
+			continue
+		} else if f == "don't()" {
+			mulEnabled = false
 			continue
 		}
-		sum += a * b
+
+		if mulEnabled {
+			nums := strings.Split(f[4:len(f)-1], ",")
+			// fmt.Println(nums)
+			a, errA := strconv.Atoi(nums[0])
+			b, errB := strconv.Atoi(nums[1])
+
+			if errA != nil || errB != nil {
+				fmt.Println("Error converting string to numbers")
+				continue
+			}
+			sum += a * b
+		}
 	}
 
 	fmt.Println(sum)
@@ -51,7 +67,7 @@ func readInputFile() string {
 }
 
 func getMulFunctions(memory string) []string {
-	re := regexp.MustCompile(`mul\([0-9]{1,3}\,[0-9]{1,3}\)`)
+	re := regexp.MustCompile(`mul\([0-9]{1,3}\,[0-9]{1,3}\)|do\(\)|don\'t\(\)`)
 	functions := re.FindAllString(memory, -1)
 	return functions
 }
