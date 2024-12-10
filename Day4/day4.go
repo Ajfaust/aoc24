@@ -14,19 +14,27 @@ import (
 // This would mean only performing checks if we hit an X or an S
 // This also means we only have to check right, down, and both diagonals
 
+// For part 2, our search changes to find the word MAS is the shape of an X
+// Same rules apply for directions
+
+// We know what we are looking for is a 3x3 subsection of the grid, so we
+// can carve out a section if we come across an M or an S and check like
+// we did in part 1
+// Another way is to look for the As as we know they are the middle, and then check the corners
+
 func main() {
 	wordSearchGrid := createInputMatrix()
 	// wordSearchGrid := []string{
-	// 	"MMMSXXMASM",
-	// 	"MSAMXMSMSA",
-	// 	"AMXSXMAAMM",
-	// 	"MSAMASMSMX",
-	// 	"XMASAMXAMM",
-	// 	"XXAMMXXAMA",
-	// 	"SMSMSASXSS",
-	// 	"SAXAMASAAA",
-	// 	"MAMMMXMMMM",
-	// 	"MXMXAXMASX",
+	// 	".M.S......",
+	// 	"..A..MSMS.",
+	// 	".M.S.MAA..",
+	// 	"..A.ASMSM.",
+	// 	".M.S.M....",
+	// 	"..........",
+	// 	"S.S.S.S.S.",
+	// 	".A.A.A.A..",
+	// 	"M.M.M.M.M.",
+	// 	"..........",
 	// }
 
 	sum := 0
@@ -35,52 +43,33 @@ func main() {
 
 	for i := range wordSearchGrid {
 		for j, c := range wordSearchGrid[i] {
-			if c != 'X' && c != 'S' {
+			// Only check for valid answers if letter is the start or end letter
+			if c != 'M' && c != 'S' {
 				continue
 			}
 
-			// Check right
-			if j+3 < boundX {
-				word := ""
-				for r := j; r < j+4; r++ {
-					word += string(wordSearchGrid[i][r])
+			// To find an x, we need to go down-right from the upper left, and down-left from the upper right
+			// If we hit a boundary, we don't need to check
+			// We only check diagonally down so we dont encounter duplicates
+			if i+2 < boundY && j+2 < boundX {
+				// First, if the next letter diagonal down is not an A, then fail
+				if wordSearchGrid[i+1][j+1] != 'A' {
+					continue
 				}
-				if word == "XMAS" || word == "SAMX" {
+
+				// Then we just check if the corners are S and M or M and S, respectively
+				topLeft := wordSearchGrid[i][j]
+				topRight := wordSearchGrid[i][j+2]
+				bottomRight := wordSearchGrid[i+2][j+2]
+				bottomLeft := wordSearchGrid[i+2][j]
+
+				// fmt.Println(string(topLeft), string(bottomRight), string(topRight), string(bottomLeft))
+
+				if (topLeft == 'M' && bottomRight == 'S' ||
+					topLeft == 'S' && bottomRight == 'M') &&
+					(topRight == 'M' && bottomLeft == 'S' ||
+						topRight == 'S' && bottomLeft == 'M') {
 					sum++
-				}
-
-				// Check right and down diagonal
-				if i+3 < boundY {
-					dwnRght := ""
-					for k := 0; k < 4; k++ {
-						dwnRght += string(wordSearchGrid[i+k][j+k])
-					}
-
-					if dwnRght == "XMAS" || dwnRght == "SAMX" {
-						sum++
-					}
-				}
-			}
-
-			// Check down
-			if i+3 < boundY {
-				word := ""
-				for k := i; k < i+4; k++ {
-					word += string(wordSearchGrid[k][j])
-				}
-				if word == "XMAS" || word == "SAMX" {
-					sum++
-				}
-				// Check down and left
-				if j-3 >= 0 {
-					dwnLft := ""
-					for m := 0; m < 4; m++ {
-						dwnLft += string(wordSearchGrid[i+m][j-m])
-					}
-
-					if dwnLft == "XMAS" || dwnLft == "SAMX" {
-						sum++
-					}
 				}
 			}
 		}
@@ -104,4 +93,65 @@ func createInputMatrix() []string {
 	}
 
 	return input
+}
+
+func partOne(grid []string) {
+	sum := 0
+	boundX := len(grid[0])
+	boundY := len(grid)
+
+	for i := range grid {
+		for j, c := range grid[i] {
+			if c != 'X' && c != 'S' {
+				continue
+			}
+
+			// Check right
+			if j+3 < boundX {
+				word := ""
+				for r := j; r < j+4; r++ {
+					word += string(grid[i][r])
+				}
+				if word == "XMAS" || word == "SAMX" {
+					sum++
+				}
+
+				// Check right and down diagonal
+				if i+3 < boundY {
+					dwnRght := ""
+					for k := 0; k < 4; k++ {
+						dwnRght += string(grid[i+k][j+k])
+					}
+
+					if dwnRght == "XMAS" || dwnRght == "SAMX" {
+						sum++
+					}
+				}
+			}
+
+			// Check down
+			if i+3 < boundY {
+				word := ""
+				for k := i; k < i+4; k++ {
+					word += string(grid[k][j])
+				}
+				if word == "XMAS" || word == "SAMX" {
+					sum++
+				}
+				// Check down and left
+				if j-3 >= 0 {
+					dwnLft := ""
+					for m := 0; m < 4; m++ {
+						dwnLft += string(grid[i+m][j-m])
+					}
+
+					if dwnLft == "XMAS" || dwnLft == "SAMX" {
+						sum++
+					}
+				}
+			}
+		}
+	}
+
+	fmt.Println(sum)
 }
