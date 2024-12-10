@@ -12,6 +12,9 @@ import (
 // The goal is to get all lists that have both X and Y, and X comes before Y
 // Then we find the middle number and add it to a sum
 
+// Part two requires re-ordering updates that have not followed the rules, which we can do by simply switching the numbers
+// We must then sum only the INCORRECTLY ORDERED updates
+
 func main() {
 	rules, updates := parseInput()
 	// rules := [][]int{
@@ -54,10 +57,12 @@ func main() {
 			m[page] = j
 		}
 
-		releventRules := 0
-		rulesMet := 0
+		// releventRules := 0
+		// rulesMet := 0
+		updated := false
 
 		// Then we will go through the rules to see which apply
+	ruleLoop:
 		for _, r := range rules {
 			first := r[0]
 			second := r[1]
@@ -69,17 +74,33 @@ func main() {
 				continue
 			}
 
-			releventRules++
-			if firstIdx < secondIdx {
-				rulesMet++
+			// releventRules++
+			// if firstIdx < secondIdx {
+			// 	rulesMet++
+			// }
+
+			// We need to update above logic to only consider and sort incorrectly ordered updates
+			if firstIdx > secondIdx {
+				update[firstIdx] = second
+				update[secondIdx] = first
+
+				// We also need to update our map
+				m[first] = secondIdx
+				m[second] = firstIdx
+
+				// Flag the update as updated
+				updated = true
+
+				// We then need to check the previous rules again as the swap may have affected them, so start over
+				goto ruleLoop
 			}
 		}
 
 		// Find the middle value if update follows all relevent rules
-		if rulesMet == releventRules {
-			// fmt.Println(update)
+		if updated {
+			fmt.Println(update)
 			mid := len(update) / 2
-			// fmt.Println(update[mid])
+			fmt.Println(update[mid])
 			sum += update[mid]
 		}
 	}
