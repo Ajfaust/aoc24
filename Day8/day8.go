@@ -10,6 +10,10 @@
 // Then we would go through each to determine corresponding antinode locations, and if they
 // are in the map add 1 to a running sum.
 
+// PART 2
+// Part two includes the fact that antinode locations go as far as possible within the grid,
+// following the same rules
+
 package main
 
 import (
@@ -47,18 +51,24 @@ func main() {
 
 			pairs := value[i+1:]
 			for _, p := range pairs {
-				aA, aB := getAntinodeCoords(c, p)
+				coords := getAntinodeCoords(c, p, bX, bY)
 
-				// If antinode coords are in bounds and another antinode is not
-				// already there, add 1 to numAntinodes
-				if isCoordInBounds(aA, bX, bY) && !antinodeMap[aA.y][aA.x] {
-					numAntinodes++
-					antinodeMap[aA.y][aA.x] = true
+				for _, c := range coords {
+					if !antinodeMap[c.y][c.x] {
+						numAntinodes++
+						antinodeMap[c.y][c.x] = true
+					}
 				}
-				if isCoordInBounds(aB, bX, bY) && !antinodeMap[aB.y][aB.x] {
-					numAntinodes++
-					antinodeMap[aB.y][aB.x] = true
-				}
+				// // If antinode coords are in bounds and another antinode is not
+				// // already there, add 1 to numAntinodes
+				// if isCoordInBounds(aA, bX, bY) && !antinodeMap[aA.y][aA.x] {
+				// 	numAntinodes++
+				// 	antinodeMap[aA.y][aA.x] = true
+				// }
+				// if isCoordInBounds(aB, bX, bY) && !antinodeMap[aB.y][aB.x] {
+				// 	numAntinodes++
+				// 	antinodeMap[aB.y][aB.x] = true
+				// }
 			}
 		}
 	}
@@ -69,20 +79,28 @@ func main() {
 	// }
 }
 
-func getAntinodeCoords(a Coordinate, b Coordinate) (Coordinate, Coordinate) {
+// Update function for part to to get all coordinates in grid range
+func getAntinodeCoords(a Coordinate, b Coordinate, bX int, bY int) []Coordinate {
 	diffX := a.x - b.x
 	diffY := a.y - b.y
 
-	antinodeA := Coordinate{
-		x: a.x + diffX,
-		y: a.y + diffY,
-	}
-	antinodeB := Coordinate{
-		x: b.x - diffX,
-		y: b.y - diffY,
+	var coords []Coordinate
+
+	// Go up
+	for isCoordInBounds(a, bX, bY) {
+		coords = append(coords, a)
+		a.x += diffX
+		a.y += diffY
 	}
 
-	return antinodeA, antinodeB
+	// Go down
+	for isCoordInBounds(b, bX, bY) {
+		coords = append(coords, b)
+		b.x -= diffX
+		b.y -= diffY
+	}
+
+	return coords
 }
 
 func isCoordInBounds(c Coordinate, bX int, bY int) bool {
