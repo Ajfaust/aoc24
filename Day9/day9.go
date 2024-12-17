@@ -7,6 +7,12 @@
 // Each file also has an ID associated with it, which is the block's index after the disk is created but before they are rearranged.
 // After the disk is rearranged, we need to calculate the checksum, which is calculated by multiplying the file id with it's sorted position and
 // then taking the sum of all the products.
+
+// PART 2
+// Part 2 requires the same formatting, except we have to move the entire file at once into a free space
+// While reading in the input file, we can also create a size map that will allow us to search the disk for
+// the next available free space before that file ID
+
 package main
 
 import (
@@ -16,37 +22,40 @@ import (
 )
 
 func main() {
-	// disk := readInput("day9_example.txt")
-	disk := readInput("day9_input.txt")
-	formatDisk(disk)
+	// disk, sizeMap := readInput("day9_example.txt")
+	disk, sizeMap := readInput("day9_input.txt")
+	formatDisk(disk, sizeMap)
 }
 
-func formatDisk(disk []int) {
-	a := 0
-	b := len(disk) - 1
+func formatDisk(disk []int, sizeMap map[int]int) {
+	a := len(disk) - 1
 
 	// Two indexes, one at each end. A look for free space starting at beginning, b looks for file blocks starting at end
-	for {
-		for disk[a] >= 0 {
-			a++
+	for a >= 0 {
+		fileId := disk[a]
+
+		for fileId < 0 {
+			a--
+			fileId = disk[a]
 		}
 
-		for disk[b] < 0 {
-			b--
+		size := sizeMap[fileId]
+		start, end := findFreeSpace(disk, size, fileId)
+		if start > 0 {
+			for i := range disk[start : end+1] {
+				swapBlocks(disk, start+i, a)
+				a--
+			}
+		} else {
+			a -= sizeMap[fileId]
 		}
-
-		if a >= b {
-			break
-		}
-
-		swapBlocks(disk, a, b)
 	}
 
 	// Calculate checksum
 	checksum := 0
 	for i, id := range disk {
 		if id == -1 {
-			break
+			continue
 		}
 
 		checksum += i * id
@@ -55,13 +64,44 @@ func formatDisk(disk []int) {
 	fmt.Println(checksum)
 }
 
+func findFreeSpace(disk []int, size int, id int) (int, int) {
+	start := -1
+	end := -1
+	curSize := 0
+	for i, num := range disk {
+		if num == id {
+			start = -1
+			end = -1
+			break
+		}
+
+		if num == -1 {
+			if start < 0 {
+				start = i
+			}
+			curSize++
+		} else {
+			start = -1
+			end = -1
+			curSize = 0
+		}
+
+		if curSize == size {
+			end = i
+			break
+		}
+	}
+
+	return start, end
+}
+
 func swapBlocks(disk []int, a int, b int) {
 	temp := disk[a]
 	disk[a] = disk[b]
 	disk[b] = temp
 }
 
-func readInput(filename string) []int {
+func readInput(filename string) ([]int, map[int]int) {
 	file, err := os.Open(filename)
 	if err != nil {
 		panic(err)
@@ -70,6 +110,7 @@ func readInput(filename string) []int {
 
 	reader := bufio.NewReader(file)
 	var result []int
+	sizeMap := make(map[int]int)
 	nextId := 0
 	index := 0
 
@@ -81,6 +122,7 @@ func readInput(filename string) []int {
 			num := int(c - '0')
 
 			if index%2 == 0 {
+				sizeMap[nextId] = num
 				for range num {
 					result = append(result, nextId)
 				}
@@ -95,5 +137,5 @@ func readInput(filename string) []int {
 		}
 	}
 
-	return result
+	return result, sizeMap
 }
