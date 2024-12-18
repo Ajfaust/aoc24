@@ -4,6 +4,12 @@
 // We are given a topigraphical map with numbers ranging from 0 to 9
 // Our goal is to see how many ways we can get from 0 to 9, only increasing by 1
 
+// PART 2
+// We are now asked to find the number of distinct trails we can make from each 0.
+// We can do so by modifying our visted map to include number of trails found
+// at each location, and avoid travelling down trails we have gone down before.
+// Then we just add up the number of trails we find in each direction.
+
 package main
 
 import (
@@ -17,14 +23,19 @@ func main() {
 	m := readInput("day10_input.txt")
 	sum := 0
 
+	// Initialize a 2D array with -1. We will use this to both track visited paths and
+	// their score
+	visited := make([][]int, len(m))
+	for i := range m {
+		visited[i] = make([]int, len(m[0]))
+		for j := range len(m[0]) {
+			visited[i][j] = -1
+		}
+	}
+
 	for i := range m {
 		for j, num := range m[i] {
 			if num == 0 {
-				// Initialize a 2D array with -1. We will use this to track visited paths
-				visited := make([][]bool, len(m))
-				for i := range m {
-					visited[i] = make([]bool, len(m[0]))
-				}
 				sum += getNumTrails(m, visited, j, i, 0)
 			}
 		}
@@ -33,25 +44,28 @@ func main() {
 	fmt.Println(sum)
 }
 
-func getNumTrails(m [][]int, v [][]bool, startX int, startY int, target int) int {
+func getNumTrails(m [][]int, v [][]int, startX int, startY int, target int) int {
 	if startX < 0 || startX >= len(m[0]) || startY < 0 || startY >= len(m) {
 		return 0
 	}
 
 	num := m[startY][startX]
-	// Don't add anything if we have already gone down this trail
-	if v[startY][startX] || num != target {
+	if num != target {
 		return 0
 	}
-
-	v[startY][startX] = true
 
 	if num == 9 {
 		return 1
 	}
 
-	// Trail score is the sum of all reachable 9s in each direction
+	// If we have analyzed this path before, no need to go through again
+	if v[startY][startX] >= 0 {
+		return v[startY][startX]
+	}
+
 	sum := getNumTrails(m, v, startX, startY+1, num+1) + getNumTrails(m, v, startX, startY-1, num+1) + getNumTrails(m, v, startX+1, startY, num+1) + getNumTrails(m, v, startX-1, startY, num+1)
+
+	v[startY][startX] = sum
 
 	return sum
 }
