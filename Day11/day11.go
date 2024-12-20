@@ -26,38 +26,51 @@ import (
 )
 
 func main() {
+	stones := readInput("day11_input.txt")
 	// stones := readInput("day11_example.txt")
-	stones := []string{"125", "17"}
+	// stones := []string{"125", "17"}
 	blinks := 25
 
 	for i := 0; i < blinks; i++ {
-		blink(stones)
+		toAdd := blink(stones)
+		offset := 0
+		for idx, str := range toAdd {
+			// fmt.Println("Inserting", str, "at index", idx)
+			stones = slices.Insert(stones, idx+offset, str)
+			offset++
+		}
+
+		// fmt.Println(stones)
 	}
 
 	fmt.Println(len(stones))
 }
 
-func blink(stones []string) {
-	for i := range stones {
+func blink(stones []string) map[int]string {
+	toAdd := make(map[int]string)
+	for i := 0; i < len(stones); i++ {
 		// If the stone is engraved with the number 0, it is replaced by a stone engraved with the number 1.
 		if stones[i] == "0" {
 			stones[i] = "1"
-			fmt.Println(stones)
 		} else if len(stones[i])%2 == 0 {
 			// If the stone is engraved with a number that has an even number of digits, it is replaced by two stones.
-			// The left half of the digits are engraved on the new left stone, and the right half of the digits are
+			// The left half of the digits are engraved on the new left stone, and the right half of the digits are engraved
+			// on the right stone
 			half := len(stones[i]) / 2
-			first := stones[i][:half]
-			second := stones[i][half:]
-			fmt.Println(first, second)
-			stones[i] = first
-			if i == len(stones)-1 {
-				stones = append(stones, second)
-			} else {
-				stones = slices.Insert(stones, i+1, second)
+			first := strings.TrimLeft(stones[i][:half], "0")
+			second := strings.TrimLeft(stones[i][half:], "0")
+
+			// If we ended up trimming everything, it must have been all 0s, so insert 0
+			if first == "" {
+				first = "0"
 			}
-			i++
-			fmt.Println(stones, i)
+			if second == "" {
+				second = "0"
+			}
+
+			// In order to not modify the slice as we are iterating, add the second half to a map to append after
+			stones[i] = first
+			toAdd[i+1] = second
 		} else {
 			// If none of the other rules apply, the stone is replaced by a new stone; the old stone's number multiplied by 2024 is
 			// engraved on the new stone.
@@ -66,9 +79,9 @@ func blink(stones []string) {
 				panic(err)
 			}
 			stones[i] = strconv.Itoa(num * 2024)
-			fmt.Println(stones)
 		}
 	}
+	return toAdd
 }
 
 func readInput(filename string) []string {
